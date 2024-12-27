@@ -26,7 +26,11 @@ const Routes = () => {
   }
 
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false, // Disable headers for all screens
+      }}
+    >
       {!user ? (
         <Stack.Screen name="Login" component={Login} />
       ) : (

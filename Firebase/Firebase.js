@@ -1,20 +1,20 @@
 // Firebase.js
 import firebase from "firebase/compat/app";
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore'; 
+import "firebase/compat/auth";
+import "firebase/compat/firestore";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCDFeAxxfwMlPuRQuYLXPSLucnqYDn2620",
-    authDomain: "salesrep-d11fb.firebaseapp.com",
-    projectId: "salesrep-d11fb",
-    storageBucket: "salesrep-d11fb.firebasestorage.app",
-    messagingSenderId: "621939620055",
-    appId: "1:621939620055:web:ec71680769085742f75892"
+  apiKey: "AIzaSyDv6_Goq_FOlERf-k5jgfz9MLF23kckQbo",
+  authDomain: "tuktuk-497d4.firebaseapp.com",
+  projectId: "tuktuk-497d4",
+  storageBucket: "tuktuk-497d4.firebasestorage.app",
+  messagingSenderId: "617723704978",
+  appId: "1:617723704978:web:3969437c523363b2a8d84b",
 };
 
 // Initialize Firebase only if it hasn't been initialized already
-if (!firebase.apps.length!=0) {
-    firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length != 0) {
+  firebase.initializeApp(firebaseConfig);
 }
 
-export { firebase};
+export { firebase };

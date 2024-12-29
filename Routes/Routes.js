@@ -4,6 +4,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import Login from "../Screens/Login";
 import { firebase } from "../Firebase/Firebase";
 import BookingScreen from "../Screens/BookingScreen";
+import Register from "../Screens/Register";
 
 const Routes = () => {
   const Stack = createStackNavigator();
@@ -32,9 +33,14 @@ const Routes = () => {
       }}
     >
       {!user ? (
-        <Stack.Screen name="Login" component={Login} />
+        <>
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Register" component={Register} />
+        </>
       ) : (
-        <Stack.Screen name="BookingScreen" component={BookingScreen} />
+        <>
+          <Stack.Screen name="BookingScreen" component={BookingScreen} />
+        </>
       )}
     </Stack.Navigator>
   );

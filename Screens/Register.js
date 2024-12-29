@@ -14,23 +14,28 @@ import {
 import { firebase } from "../Firebase/Firebase";
 
 const { width, height } = Dimensions.get('window');
-const aspectRatio = height / width;
 
-const Login = ({navigation}) => {
+const Register = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  const handleRegister = async () => {
+    if (!email || !password || !confirmPassword) {
       alert("Please fill in all fields");
       return;
     }
-    
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await firebase.auth().signInWithEmailAndPassword(email, password);
-      console.log("User logged in successfully");
+      await firebase.auth().createUserWithEmailAndPassword(email, password);
+      alert("Account created successfully!");
+      navigation.navigate("Login");
     } catch (error) {
       alert(error.message);
     } finally {
@@ -42,7 +47,7 @@ const Login = ({navigation}) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
       <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "height"} 
         style={styles.content}
       >
         {/* Header Section */}
@@ -51,13 +56,13 @@ const Login = ({navigation}) => {
             <Text style={styles.logoText}>🛺</Text>
           </View>
           <Text style={styles.appName}>TukTuk</Text>
-          <Text style={styles.tagline}>Book your ride instantly</Text>
+          <Text style={styles.tagline}>Create your account</Text>
         </View>
 
-        {/* Login Form */}
+        {/* Register Form */}
         <View style={styles.formContainer}>
-          <Text style={styles.welcomeText}>Welcome Back!</Text>
-          
+          <Text style={styles.welcomeText}>Join Us!</Text>
+
           <View style={styles.inputWrapper}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
@@ -83,36 +88,34 @@ const Login = ({navigation}) => {
             />
           </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.button, styles.loginButton]}
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.loginButtonText}>
-              {isLoading ? "Logging in..." : "Login"}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputLabel}>Confirm Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm your password"
+              placeholderTextColor="#045757"
+              onChangeText={setConfirmPassword}
+              value={confirmPassword}
+              secureTextEntry
+            />
           </View>
 
-          <TouchableOpacity style={[styles.button, styles.googleButton]}>
-            <Text style={styles.googleButtonText}>Google</Text>
+          <TouchableOpacity 
+            style={[styles.button, styles.registerButton]} 
+            onPress={handleRegister}
+            disabled={isLoading}
+          >
+            <Text style={styles.registerButtonText}>
+              {isLoading ? "Creating account..." : "Register"}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>New to TukTuk?</Text>
-          <TouchableOpacity  onPress={()=>navigation.navigate("Register")}>
-            <Text style={styles.signUpText}>Create Account</Text>
+          <Text style={styles.footerText}>Already have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <Text style={styles.signInText}>Sign In</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -123,7 +126,7 @@ const Login = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   content: {
     flex: 1,
@@ -131,16 +134,16 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.02,
   },
   headerContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: height * 0.02,
   },
   logoContainer: {
     width: width * 0.15,
     height: width * 0.15,
     borderRadius: width * 0.075,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: height * 0.01,
   },
   logoText: {
@@ -148,13 +151,13 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: width * 0.06,
-    fontWeight: '700',
-    color: '#222222',
+    fontWeight: "700",
+    color: "#222222",
     letterSpacing: 1,
   },
   tagline: {
     fontSize: width * 0.032,
-    color: '#045757',
+    color: "#045757",
     marginTop: height * 0.005,
     opacity: 0.8,
   },
@@ -163,8 +166,8 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: width * 0.05,
-    fontWeight: '600',
-    color: '#222222',
+    fontWeight: "600",
+    color: "#222222",
     marginBottom: height * 0.02,
   },
   inputWrapper: {
@@ -172,96 +175,57 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: width * 0.032,
-    color: '#222222',
+    color: "#222222",
     marginBottom: height * 0.005,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 12,
     paddingVertical: height * 0.015,
     paddingHorizontal: width * 0.04,
     fontSize: width * 0.035,
-    color: '#222222',
+    color: "#222222",
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: height * 0.015,
-    marginTop: height * 0.005,
-  },
-  forgotPasswordText: {
-    color: '#045757',
-    fontSize: width * 0.032,
-    fontWeight: '600',
+    borderColor: "#e0e0e0",
   },
   button: {
     borderRadius: 12,
     paddingVertical: height * 0.015,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginVertical: height * 0.008,
   },
-  loginButton: {
-    backgroundColor: '#045757',
-    shadowColor: '#045757',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+  registerButton: {
+    backgroundColor: "#045757",
+    shadowColor: "#045757",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,
   },
-  loginButtonText: {
-    color: '#ffffff',
+  registerButtonText: {
+    color: "#ffffff",
     fontSize: width * 0.035,
-    fontWeight: '600',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: height * 0.02,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  dividerText: {
-    color: '#666666',
-    paddingHorizontal: width * 0.03,
-    fontSize: width * 0.032,
-  },
-  googleButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  googleButtonText: {
-    color: '#222222',
-    fontSize: width * 0.035,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     paddingBottom: height * 0.03,
-    marginTop: 'auto',
+    marginTop: "auto",
   },
   footerText: {
-    color: '#666666',
+    color: "#666666",
     fontSize: width * 0.032,
   },
-  signUpText: {
-    color: '#045757',
+  signInText: {
+    color: "#045757",
     fontSize: width * 0.032,
-    fontWeight: '700',
+    fontWeight: "700",
     marginLeft: width * 0.02,
   },
 });
 
-
-export default Login;
+export default Register;

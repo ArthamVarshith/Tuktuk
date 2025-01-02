@@ -16,7 +16,7 @@ import { firebase } from "../Firebase/Firebase";
 const { width, height } = Dimensions.get('window');
 const aspectRatio = height / width;
 
-const Login = ({navigation}) => {
+const UserLogin = ({navigation}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -111,7 +111,7 @@ const Login = ({navigation}) => {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>New to TukTuk?</Text>
-          <TouchableOpacity  onPress={()=>navigation.navigate("Register")}>
+          <TouchableOpacity  onPress={()=>navigation.navigate("UserRegister")}>
             <Text style={styles.signUpText}>Create Account</Text>
           </TouchableOpacity>
         </View>
@@ -264,4 +264,4 @@ const styles = StyleSheet.create({
 });
 
 
-export default Login;
+export default UserLogin;

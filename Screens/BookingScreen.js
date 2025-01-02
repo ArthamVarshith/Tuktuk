@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Animated, TouchableOpacity, ScrollView, Platform, SafeAreaView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import {firebase} from '../Firebase/Firebase'
 import { 
   Button, 
   Text, 
@@ -64,7 +65,7 @@ const PREDEFINED_LOCATIONS = [
     latitude: 16.4325,
     longitude: 80.5588,
     description: 'Historic Temple Town',
-    iconName: 'temple-hindu',
+    iconName: 'TempleHindu',
     pricing: {
       big: {
         autoRate: 500,
@@ -251,16 +252,41 @@ const AutoBookingScreen = () => {
   };
 
   const handleRideConfirm = () => {
-    console.log('Booking auto with details:', {
-      dropLocation: selectedLocation,
-      passengers: numberOfPassengers,
+    // Get current time if the ride mode is real-time, else use selected time and date
+    const rideDate = rideMode === 'real-time' ? new Date() : selectedDate;
+    const rideTime = rideMode === 'real-time' ? new Date() : selectedTime;
+  
+    // Booking details to be added to Firestore
+    const bookingDetails = {
+      destination: {
+        name: selectedLocation.name,         // Name of the destination
+        latitude: selectedLocation.latitude, // Latitude of the destination
+        longitude: selectedLocation.longitude // Longitude of the destination
+      },
       autoType: autoType,
-      mode: rideMode,
-      date: selectedDate,
-      time: selectedTime,
-      cost: totalCost
-    });
-    setShowRideDetailsModal(false);
+      passengers: numberOfPassengers,
+      rideMode: rideMode,
+      date: rideDate,
+      time: rideTime,
+      cost: totalCost,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Timestamp of booking
+    };
+  
+    // Reference to Firestore collection
+    const bookingsRef = firebase.firestore().collection('bookings');
+  
+    // Add the booking details to Firestore
+    bookingsRef
+      .add(bookingDetails)
+      .then((docRef) => {
+        console.log('Booking confirmed with ID: ', docRef.id);
+        setShowRideDetailsModal(false); // Close modal after booking
+        alert('Booking confirmed successfully!');
+      })
+      .catch((error) => {
+        console.error('Error adding booking: ', error);
+        alert('There was an error with the booking. Please try again.');
+      });
   };
 
   const renderIcon = (iconName, size = 24, color = theme.colors.primary) => {

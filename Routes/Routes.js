@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { View } from "react-native";
 import { createStackNavigator } from "@react-navigation/stack";
-import Login from "../Screens/Login";
 import { firebase } from "../Firebase/Firebase";
+import LandingPage from "../Screens/LandingPage";
+import UserLogin from "../Screens/UserLogin";
+import UserRegister from "../Screens/UserRegister";
+import DriverLogin from "../Screens/DriverLogin";
 import BookingScreen from "../Screens/BookingScreen";
-import Register from "../Screens/Register";
 
 const Routes = () => {
   const Stack = createStackNavigator();
@@ -34,8 +36,10 @@ const Routes = () => {
     >
       {!user ? (
         <>
-          <Stack.Screen name="Login" component={Login} />
-          <Stack.Screen name="Register" component={Register} />
+        <Stack.Screen name="LandingPage" component={LandingPage}/>
+          <Stack.Screen name="UserLogin" component={UserLogin} />
+          <Stack.Screen name="UserRegister" component={UserRegister} />
+          <Stack.Screen name="DriverLogin" component={DriverLogin}/>
         </>
       ) : (
         <>

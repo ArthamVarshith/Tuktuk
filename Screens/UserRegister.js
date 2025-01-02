@@ -15,7 +15,7 @@ import { firebase } from "../Firebase/Firebase";
 
 const { width, height } = Dimensions.get('window');
 
-const Register = ({ navigation }) => {
+const UserRegister = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -114,7 +114,7 @@ const Register = ({ navigation }) => {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+          <TouchableOpacity onPress={() => navigation.navigate("UserLogin")}>
             <Text style={styles.signInText}>Sign In</Text>
           </TouchableOpacity>
         </View>
@@ -228,4 +228,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Register;
+export default UserRegister;

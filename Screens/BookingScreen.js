@@ -19,6 +19,7 @@ import {
   MD3LightTheme,
   RadioButton,
   Menu,
+  ActivityIndicator,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -65,7 +66,7 @@ const PREDEFINED_LOCATIONS = [
     latitude: 16.4325,
     longitude: 80.5588,
     description: 'Historic Temple Town',
-    iconName: 'TempleHindu',
+    iconName: 'temple-hindu',
     pricing: {
       big: {
         autoRate: 500,
@@ -171,6 +172,26 @@ const PREDEFINED_LOCATIONS = [
   }
 ];
 
+const SearchingDriversModal = ({ visible }) => (
+  <PaperModal 
+    visible={visible} 
+    dismissable={false}
+    contentContainerStyle={styles.searchingModalContainer}
+  >
+    <Surface style={styles.searchingContent}>
+      <View style={styles.searchingIconContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+      <Text style={styles.searchingTitle}>Searching for Drivers</Text>
+      <Text style={styles.searchingSubtitle}>Please wait while we find the best driver for you...</Text>
+      <View style={styles.searchingStatusContainer}>
+        <View style={styles.statusDot} />
+        <Text style={styles.searchingStatus}>Searching nearby drivers...</Text>
+      </View>
+    </Surface>
+  </PaperModal>
+);
+
 const AutoBookingScreen = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showLocationList, setShowLocationList] = useState(false);
@@ -185,13 +206,26 @@ const AutoBookingScreen = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [totalCost, setTotalCost] = useState(0);
   const [showPassengerMenu, setShowPassengerMenu] = useState(false);
+  const [hasActiveBooking, setHasActiveBooking] = useState(false);
+  const [showSearchingModal, setShowSearchingModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeBookingId, setActiveBookingId] = useState(null);
 
   useEffect(() => {
+    const unsubscribeAuth = firebase.auth().onAuthStateChanged((user) => {
+      setCurrentUser(user);
+      if (user) {
+        checkActiveBookings(user.email);
+      }
+    });
+
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1000,
       useNativeDriver: true,
     }).start();
+
+    return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
@@ -199,6 +233,28 @@ const AutoBookingScreen = () => {
       calculateTotalCost();
     }
   }, [numberOfPassengers, selectedLocation, autoType]);
+
+  const checkActiveBookings = async (userEmail) => {
+    try {
+      const bookingsRef = firebase.firestore().collection('bookings');
+      const snapshot = await bookingsRef
+        .where('userEmail', '==', userEmail)
+        .where('status', '==', 'Pending')
+        .get();
+
+      if (!snapshot.empty) {
+        setHasActiveBooking(true);
+        setActiveBookingId(snapshot.docs[0].id);
+        setShowSearchingModal(true);
+      } else {
+        setHasActiveBooking(false);
+        setActiveBookingId(null);
+        setShowSearchingModal(false);
+      }
+    } catch (error) {
+      console.error('Error checking active bookings:', error);
+    }
+  };
 
   const calculateTotalCost = () => {
     if (!selectedLocation) return;
@@ -210,6 +266,63 @@ const AutoBookingScreen = () => {
       setTotalCost(numberOfPassengers * minRatePerHead);
     } else {
       setTotalCost(autoRate);
+    }
+  };
+
+  const handleRideConfirm = async () => {
+    if (!currentUser) {
+      alert('Please login to book a ride');
+      return;
+    }
+
+    if (hasActiveBooking) {
+      alert('You already have an active booking. Please wait for it to complete.');
+      return;
+    }
+
+    setShowSearchingModal(true);
+
+    const rideDate = rideMode === 'realtime' ? new Date() : selectedDate;
+    const rideTime = rideMode === 'realtime' ? new Date() : selectedTime;
+
+    const bookingDetails = {
+      destination: {
+        name: selectedLocation.name,
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude
+      },
+      autoType: autoType,
+      passengers: numberOfPassengers,
+      rideMode: rideMode,
+      date: rideDate,
+      time: rideTime,
+      cost: totalCost,
+      status: 'Pending',
+      userEmail: currentUser.email,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+
+    try {
+      const bookingsRef = firebase.firestore().collection('bookings');
+      const docRef = await bookingsRef.add(bookingDetails);
+      setActiveBookingId(docRef.id);
+      setHasActiveBooking(true);
+      setShowRideDetailsModal(false);
+
+      // Listen for status changes
+      const unsubscribe = bookingsRef.doc(docRef.id)
+        .onSnapshot((doc) => {
+          if (doc.exists && doc.data().status !== 'Pending') {
+            setShowSearchingModal(false);
+            setHasActiveBooking(false);
+            unsubscribe();
+          }
+        });
+
+    } catch (error) {
+      console.error('Error adding booking:', error);
+      setShowSearchingModal(false);
+      alert('There was an error with the booking. Please try again.');
     }
   };
 
@@ -249,44 +362,6 @@ const AutoBookingScreen = () => {
       minute: '2-digit',
       hour12: true
     });
-  };
-
-  const handleRideConfirm = () => {
-    // Get current time if the ride mode is real-time, else use selected time and date
-    const rideDate = rideMode === 'real-time' ? new Date() : selectedDate;
-    const rideTime = rideMode === 'real-time' ? new Date() : selectedTime;
-  
-    // Booking details to be added to Firestore
-    const bookingDetails = {
-      destination: {
-        name: selectedLocation.name,         // Name of the destination
-        latitude: selectedLocation.latitude, // Latitude of the destination
-        longitude: selectedLocation.longitude // Longitude of the destination
-      },
-      autoType: autoType,
-      passengers: numberOfPassengers,
-      rideMode: rideMode,
-      date: rideDate,
-      time: rideTime,
-      cost: totalCost,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Timestamp of booking
-    };
-  
-    // Reference to Firestore collection
-    const bookingsRef = firebase.firestore().collection('bookings');
-  
-    // Add the booking details to Firestore
-    bookingsRef
-      .add(bookingDetails)
-      .then((docRef) => {
-        console.log('Booking confirmed with ID: ', docRef.id);
-        setShowRideDetailsModal(false); // Close modal after booking
-        alert('Booking confirmed successfully!');
-      })
-      .catch((error) => {
-        console.error('Error adding booking: ', error);
-        alert('There was an error with the booking. Please try again.');
-      });
   };
 
   const renderIcon = (iconName, size = 24, color = theme.colors.primary) => {
@@ -384,9 +459,17 @@ const AutoBookingScreen = () => {
             })
           }]
         }]}>
-          <TouchableOpacity onPress={() => setShowLocationList(true)}>
+          <TouchableOpacity 
+            onPress={() => {
+              if (!hasActiveBooking) {
+                setShowLocationList(true);
+              } else {
+                alert('You have an active booking. Please wait for it to complete.');
+              }
+            }}
+          >
             <Card style={styles.searchCard}>
-              <Card.Content style={styles.searchContent}>
+            <Card.Content style={styles.searchContent}>
                 {renderIcon('map-marker')}
                 <Text style={styles.searchText}>
                   {selectedLocation ? selectedLocation.name : "Where would you like to go?"}
@@ -487,7 +570,7 @@ const AutoBookingScreen = () => {
                   {renderPassengerSelection()}
                   <Text style={styles.costInfo}>
                     {autoType === 'big' 
-                      ? `₹${selectedLocation?.pricing.big.minRatePerHead} per person (1-4 passengers) or ₹${selectedLocation?.pricing.big.autoRate} for 5-6 passengers`
+                      ? `₹${selectedLocation?.pricing.big.minRatePerHead} per person (1-4 passengers) or ₹${selectedLocation?.pricing.big.autoRate} for 5-6 passengers}`
                       : `₹${selectedLocation?.pricing.small.minRatePerHead} per person (1-2 passengers) or ₹${selectedLocation?.pricing.small.autoRate} for 3 passengers`
                     }
                   </Text>
@@ -558,8 +641,9 @@ const AutoBookingScreen = () => {
                     onPress={handleRideConfirm}
                     style={styles.confirmButton}
                     contentStyle={styles.buttonContent}
+                    disabled={hasActiveBooking}
                   >
-                    Confirm Booking
+                    {hasActiveBooking ? 'Booking in Progress' : 'Confirm Booking'}
                   </Button>
                   <Button
                     mode="outlined"
@@ -573,220 +657,273 @@ const AutoBookingScreen = () => {
             </Surface>
           </PaperModal>
         </Portal>
+
+        <Portal>
+          <SearchingDriversModal visible={showSearchingModal} />
+        </Portal>
       </SafeAreaView>
     </PaperProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  map: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  },
-  searchBar: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    left: SCREEN_WIDTH * 0.05,
-    right: SCREEN_WIDTH * 0.05,
-    zIndex: 1,
-  },
-  searchCard: {
-    elevation: 4,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-  },
-  searchContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  searchText: {
-    fontSize: 16,
-    color: '#666',
-    flex: 1,
-    marginLeft: 12,
-  },
-  modalContent: {
-    backgroundColor: 'transparent',
-    margin: SCREEN_WIDTH * 0.025,
-    maxHeight: SCREEN_HEIGHT * MODAL_HEIGHT_PERCENTAGE,
-    width: SCREEN_WIDTH * MODAL_WIDTH_PERCENTAGE,
-    alignSelf: 'center',
-  },
-  locationListModal: {
-    maxHeight: SCREEN_HEIGHT * 0.7,
-  },
-  bookingModal: {
-    maxHeight: SCREEN_HEIGHT * MODAL_HEIGHT_PERCENTAGE,
-  },
-  modalSurface: {
+  // ... (keep all existing styles)
+  
+    // ... (all previous styles including searching modal styles)
+  
+    container: {
+      flex: 1,
+      backgroundColor: '#fff',
+    },
+    map: {
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT,
+    },
+    searchBar: {
+      position: 'absolute',
+      top: Platform.OS === 'ios' ? 60 : 40,
+      left: SCREEN_WIDTH * 0.05,
+      right: SCREEN_WIDTH * 0.05,
+      zIndex: 1,
+    },
+    searchCard: {
+      elevation: 4,
+      borderRadius: 12,
+      backgroundColor: '#fff',
+    },
+    searchContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    searchText: {
+      fontSize: 16,
+      color: '#666',
+      flex: 1,
+      marginLeft: 12,
+    },
+    modalContent: {
+      backgroundColor: 'transparent',
+      margin: SCREEN_WIDTH * 0.025,
+      maxHeight: SCREEN_HEIGHT * MODAL_HEIGHT_PERCENTAGE,
+      width: SCREEN_WIDTH * MODAL_WIDTH_PERCENTAGE,
+      alignSelf: 'center',
+    },
+    locationListModal: {
+      maxHeight: SCREEN_HEIGHT * 0.7,
+    },
+    bookingModal: {
+      maxHeight: SCREEN_HEIGHT * MODAL_HEIGHT_PERCENTAGE,
+    },
+    modalSurface: {
+      padding: 20,
+      borderRadius: 16,
+      elevation: 5,
+      backgroundColor: '#fff',
+      height: '100%',
+    },
+    locationScrollView: {
+      flexGrow: 0,
+      marginTop: 10,
+    },
+    bookingScrollView: {
+      flexGrow: 1,
+    },
+    bookingScrollContent: {
+      paddingBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    locationCard: {
+      marginBottom: 12,
+      elevation: 2,
+      backgroundColor: '#fff',
+    },
+    locationCardContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+    },
+    locationTextContainer: {
+      flex: 1,
+      marginLeft: 15,
+    },
+    locationName: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    locationDescription: {
+      fontSize: 14,
+      color: '#666',
+    },
+    destinationCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: '#f5f5f5',
+      borderRadius: 12,
+      marginBottom: 20,
+    },
+    destinationTextContainer: {
+      marginLeft: 15,
+      flex: 1,
+    },
+    destinationTitle: {
+      fontSize: 14,
+      color: '#666',
+      marginBottom: 4,
+    },
+    destinationName: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    divider: {
+      marginVertical: 20,
+    },
+    section: {
+      marginBottom: 24,
+      paddingHorizontal: 4,
+    },
+    optionContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    optionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 10,
+    },
+    radioContainer: {
+      marginHorizontal: 4,
+    },
+    radioOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    segmentedButton: {
+      marginBottom: 12,
+    },
+    costInfo: {
+      textAlign: 'center',
+      color: '#666',
+      fontSize: 14,
+      marginTop: 8,
+    },
+    schedulingContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginBottom: 24,
+      flexWrap: 'wrap',
+      gap: 12,
+      paddingHorizontal: 4,
+    },
+    chip: {
+      minWidth: SCREEN_WIDTH * 0.35,
+      marginHorizontal: 0,
+    },
+    costContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: '#f5f5f5',
+      borderRadius: 12,
+      marginVertical: 24,
+    },
+    costLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    costAmount: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.primary,
+    },
+    buttonContainer: {
+      gap: 12,
+      marginTop: 12,
+      paddingHorizontal: 4,
+    },
+    confirmButton: {
+      marginBottom: 0,
+      borderRadius: 8,
+      elevation: 2,
+    },
+    cancelButton: {
+      borderRadius: 8,
+    },
+    buttonContent: {
+      paddingVertical: 8,
+    },
+    passengerSelector: {
+      backgroundColor: '#f5f5f5',
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 8,
+    },
+    passengerSelectorContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    passengerSelectorText: {
+      fontSize: 16,
+      color: theme.colors.primary,
+      fontWeight: '500',
+    },
+  
+  searchingModalContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     padding: 20,
+    margin: 20,
+  },
+  searchingContent: {
+    padding: 24,
     borderRadius: 16,
-    elevation: 5,
-    backgroundColor: '#fff',
-    height: '100%',
+    alignItems: 'center',
+    backgroundColor: 'white',
   },
-  locationScrollView: {
-    flexGrow: 0,
-    marginTop: 10,
+  searchingIconContainer: {
+    marginBottom: 20,
   },
-  bookingScrollView: {
-    flexGrow: 1,
-  },
-  bookingScrollContent: {
-    paddingBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 24,
+  searchingTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  locationCard: {
-    marginBottom: 12,
-    elevation: 2,
-    backgroundColor: '#fff',
-  },
-  locationCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  locationTextContainer: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  locationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  locationDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  destinationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  destinationTextContainer: {
-    marginLeft: 15,
-    flex: 1,
-  },
-  destinationTitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  destinationName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  divider: {
-    marginVertical: 20,
-  },
-  section: {
-    marginBottom: 24,
-    paddingHorizontal: 4,
-  },
-  optionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
-  },
-  radioContainer: {
-    marginHorizontal: 4,
-  },
-  radioOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 8,
-  },
-  segmentedButton: {
-    marginBottom: 12,
-  },
-  costInfo: {
     textAlign: 'center',
-    color: '#666',
+  },
+  searchingSubtitle: {
     fontSize: 14,
-    marginTop: 8,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  schedulingContainer: {
+  searchingStatusContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 24,
-    flexWrap: 'wrap',
-    gap: 12,
-    paddingHorizontal: 4,
-  },
-  chip: {
-    minWidth: SCREEN_WIDTH * 0.35,
-    marginHorizontal: 0,
-  },
-  costContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    marginVertical: 24,
-  },
-  costLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  costAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-  },
-  buttonContainer: {
-    gap: 12,
-    marginTop: 12,
-    paddingHorizontal: 4,
-  },
-  confirmButton: {
-    marginBottom: 0,
-    borderRadius: 8,
-    elevation: 2,
-  },
-  cancelButton: {
-    borderRadius: 8,
-  },
-  buttonContent: {
-    paddingVertical: 8,
-  },
-  passengerSelector: {
     backgroundColor: '#f5f5f5',
     padding: 12,
     borderRadius: 8,
-    marginBottom: 8,
   },
-  passengerSelectorContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF4757',
+    marginRight: 8,
   },
-  passengerSelectorText: {
-    fontSize: 16,
-    color: theme.colors.primary,
-    fontWeight: '500',
-  }
+  searchingStatus: {
+    fontSize: 14,
+    color: '#444',
+  },
 });
 
 export default AutoBookingScreen;

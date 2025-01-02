@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Animated, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, Animated, TouchableOpacity, ScrollView, Platform, SafeAreaView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { 
@@ -15,13 +15,15 @@ import {
   Chip,
   Divider,
   useTheme,
-  MD3LightTheme
+  MD3LightTheme,
+  RadioButton,
+  Menu,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MODAL_HEIGHT_PERCENTAGE = 0.8;
-const MODAL_WIDTH_PERCENTAGE = 0.9;
+const MODAL_HEIGHT_PERCENTAGE = 0.85;
+const MODAL_WIDTH_PERCENTAGE = 0.95;
 
 const theme = {
   ...MD3LightTheme,
@@ -33,49 +35,156 @@ const theme = {
   },
 };
 
-// Predefined locations remain the same...
 const PREDEFINED_LOCATIONS = [
   {
     id: '1',
-    name: 'Vijayawada Bus Stand',
-    latitude: 16.5157,
-    longitude: 80.6343,
-    description: 'Pandit Nehru Bus Station (PNBS)',
-    iconName: 'bus'
+    name: 'Mandadam/Secretariat',
+    latitude: 16.5180,
+    longitude: 80.5258,
+    description: 'Government Administrative Complex',
+    iconName: 'office-building',
+    pricing: {
+      big: {
+        autoRate: 200,
+        maxPassengers: 6,
+        minRatePerHead: 75,
+        minPassengersForMinRate: 4
+      },
+      small: {
+        autoRate: 100,
+        maxPassengers: 3,
+        minRatePerHead: 50,
+        minPassengersForMinRate: 2
+      }
+    }
   },
   {
     id: '2',
-    name: 'Vijayawada Railway Station',
-    latitude: 16.5174,
-    longitude: 80.6197,
-    description: 'Major Railway Junction in South Central Railway',
-    iconName: 'train'
+    name: 'Mangalagiri/Undavalli',
+    latitude: 16.4325,
+    longitude: 80.5588,
+    description: 'Historic Temple Town',
+    iconName: 'temple-hindu',
+    pricing: {
+      big: {
+        autoRate: 500,
+        maxPassengers: 6,
+        minRatePerHead: 150,
+        minPassengersForMinRate: 4
+      },
+      small: {
+        autoRate: 300,
+        maxPassengers: 3,
+        minRatePerHead: 150,
+        minPassengersForMinRate: 2
+      }
+    }
   },
   {
     id: '3',
-    name: 'Vijayawada Airport',
-    latitude: 16.5306,
-    longitude: 80.7967,
-    description: 'International Airport (VGA)',
-    iconName: 'airplane'
+    name: 'Rain Tree Park/Namburu',
+    latitude: 16.4478,
+    longitude: 80.6163,
+    description: 'Recreational Area',
+    iconName: 'tree',
+    pricing: {
+      big: {
+        autoRate: 600,
+        maxPassengers: 6,
+        minRatePerHead: 150,
+        minPassengersForMinRate: 4
+      },
+      small: {
+        autoRate: 400,
+        maxPassengers: 3,
+        minRatePerHead: 200,
+        minPassengersForMinRate: 2
+      }
+    }
+  },
+  {
+    id: '4',
+    name: 'Vijayawada Bus Stand/Railway Station',
+    latitude: 16.5193,
+    longitude: 80.6305,
+    description: 'Major Transportation Hub',
+    iconName: 'train-car',
+    pricing: {
+      big: {
+        autoRate: 600,
+        maxPassengers: 6,
+        minRatePerHead: 150,
+        minPassengersForMinRate: 4
+      },
+      small: {
+        autoRate: 300,
+        maxPassengers: 3,
+        minRatePerHead: 150,
+        minPassengersForMinRate: 2
+      }
+    }
+  },
+  {
+    id: '5',
+    name: 'Guntur Bus Stand/Railway Station',
+    latitude: 16.2986,
+    longitude: 80.4428,
+    description: 'Guntur Transportation Hub',
+    iconName: 'train-car',
+    pricing: {
+      big: {
+        autoRate: 800,
+        maxPassengers: 6,
+        minRatePerHead: 300,
+        minPassengersForMinRate: 4
+      },
+      small: {
+        autoRate: 500,
+        maxPassengers: 3,
+        minRatePerHead: 250,
+        minPassengersForMinRate: 2
+      }
+    }
+  },
+  {
+    id: '6',
+    name: 'Airport-Gannavaram',
+    latitude: 16.5175,
+    longitude: 80.7975,
+    description: 'Vijayawada International Airport',
+    iconName: 'airplane',
+    pricing: {
+      big: {
+        autoRate: 1400,
+        maxPassengers: 6,
+        minRatePerHead: 500,
+        minPassengersForMinRate: 4
+      },
+      small: {
+        autoRate: 1000,
+        maxPassengers: 3,
+        minRatePerHead: 500,
+        minPassengersForMinRate: 2
+      }
+    }
   }
 ];
 
-const RideBookingScreen = () => {
-  // State declarations remain the same...
+const AutoBookingScreen = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showLocationList, setShowLocationList] = useState(false);
   const [showRideDetailsModal, setShowRideDetailsModal] = useState(false);
-  const [numberOfSeats, setNumberOfSeats] = useState(1);
+  const [numberOfPassengers, setNumberOfPassengers] = useState(1);
+  const [autoType, setAutoType] = useState('small');
   const [rideMode, setRideMode] = useState('realtime');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [totalCost, setTotalCost] = useState(250);
+  const [totalCost, setTotalCost] = useState(0);
+  const [showPassengerMenu, setShowPassengerMenu] = useState(false);
 
-  // Effects and handlers remain the same...
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -85,14 +194,30 @@ const RideBookingScreen = () => {
   }, []);
 
   useEffect(() => {
-    const costPerSeat = numberOfSeats <= 2 ? 250 : 150;
-    setTotalCost(costPerSeat * numberOfSeats);
-  }, [numberOfSeats]);
+    if (selectedLocation && autoType) {
+      calculateTotalCost();
+    }
+  }, [numberOfPassengers, selectedLocation, autoType]);
+
+  const calculateTotalCost = () => {
+    if (!selectedLocation) return;
+    
+    const pricing = selectedLocation.pricing[autoType];
+    const { autoRate, minRatePerHead, minPassengersForMinRate } = pricing;
+
+    if (numberOfPassengers <= minPassengersForMinRate) {
+      setTotalCost(numberOfPassengers * minRatePerHead);
+    } else {
+      setTotalCost(autoRate);
+    }
+  };
 
   const handleLocationSelect = (location) => {
     setSelectedLocation(location);
     setShowLocationList(false);
     setShowRideDetailsModal(true);
+    setAutoType('small');
+    setNumberOfPassengers(1);
   };
 
   const handleDateChange = (event, selectedDate) => {
@@ -126,9 +251,10 @@ const RideBookingScreen = () => {
   };
 
   const handleRideConfirm = () => {
-    console.log('Booking ride with details:', {
+    console.log('Booking auto with details:', {
       dropLocation: selectedLocation,
-      seats: numberOfSeats,
+      passengers: numberOfPassengers,
+      autoType: autoType,
       mode: rideMode,
       date: selectedDate,
       time: selectedTime,
@@ -137,16 +263,76 @@ const RideBookingScreen = () => {
     setShowRideDetailsModal(false);
   };
 
+  const renderIcon = (iconName, size = 24, color = theme.colors.primary) => {
+    try {
+      return (
+        <MaterialCommunityIcons 
+          name={iconName} 
+          size={size} 
+          color={color}
+        />
+      );
+    } catch (error) {
+      console.warn(`Icon ${iconName} not found, using fallback`);
+      return (
+        <MaterialCommunityIcons 
+          name="map-marker" 
+          size={size} 
+          color={color}
+        />
+      );
+    }
+  };
+
+  const renderPassengerSelection = () => {
+    const maxPassengers = selectedLocation?.pricing[autoType]?.maxPassengers || 3;
+    
+    return (
+      <Menu
+        visible={showPassengerMenu}
+        onDismiss={() => setShowPassengerMenu(false)}
+        anchor={
+          <TouchableOpacity 
+            onPress={() => setShowPassengerMenu(true)}
+            style={styles.passengerSelector}
+          >
+            <View style={styles.passengerSelectorContent}>
+              <Text style={styles.passengerSelectorText}>
+                {numberOfPassengers} Passenger{numberOfPassengers > 1 ? 's' : ''}
+              </Text>
+              <MaterialCommunityIcons 
+                name="chevron-down" 
+                size={24} 
+                color={theme.colors.primary}
+              />
+            </View>
+          </TouchableOpacity>
+        }
+      >
+        {Array.from({ length: maxPassengers }, (_, i) => (
+          <Menu.Item
+            key={i + 1}
+            onPress={() => {
+              setNumberOfPassengers(i + 1);
+              setShowPassengerMenu(false);
+            }}
+            title={`${i + 1} Passenger${i > 0 ? 's' : ''}`}
+          />
+        ))}
+      </Menu>
+    );
+  };
+
   return (
     <PaperProvider theme={theme}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <MapView
           style={styles.map}
           initialRegion={{
-            latitude: 16.5157,
-            longitude: 80.6343,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
+            latitude: 16.4825,
+            longitude: 80.6160,
+            latitudeDelta: 0.5,
+            longitudeDelta: 0.5,
           }}
         >
           {PREDEFINED_LOCATIONS.map((location) => (
@@ -163,21 +349,19 @@ const RideBookingScreen = () => {
           ))}
         </MapView>
 
-        <Animated.View 
-          style={[styles.searchBar, {
-            opacity: fadeAnim,
-            transform: [{
-              translateY: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-50, 0]
-              })
-            }]
-          }]}
-        >
+        <Animated.View style={[styles.searchBar, {
+          opacity: fadeAnim,
+          transform: [{
+            translateY: fadeAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [-50, 0]
+            })
+          }]
+        }]}>
           <TouchableOpacity onPress={() => setShowLocationList(true)}>
             <Card style={styles.searchCard}>
               <Card.Content style={styles.searchContent}>
-                <MaterialCommunityIcons name="map-marker" size={24} color={theme.colors.primary} />
+                {renderIcon('map-marker')}
                 <Text style={styles.searchText}>
                   {selectedLocation ? selectedLocation.name : "Where would you like to go?"}
                 </Text>
@@ -194,7 +378,10 @@ const RideBookingScreen = () => {
           >
             <Surface style={styles.modalSurface}>
               <Text style={styles.modalTitle}>Select Destination</Text>
-              <ScrollView style={styles.locationScrollView}>
+              <ScrollView 
+                style={styles.locationScrollView}
+                showsVerticalScrollIndicator={false}
+              >
                 {PREDEFINED_LOCATIONS.map((location) => (
                   <TouchableOpacity
                     key={location.id}
@@ -202,11 +389,7 @@ const RideBookingScreen = () => {
                   >
                     <Card style={styles.locationCard}>
                       <Card.Content style={styles.locationCardContent}>
-                        <MaterialCommunityIcons 
-                          name={location.iconName} 
-                          size={24} 
-                          color={theme.colors.primary} 
-                        />
+                        {renderIcon(location.iconName)}
                         <View style={styles.locationTextContainer}>
                           <Text style={styles.locationName}>{location.name}</Text>
                           <Text style={styles.locationDescription}>
@@ -229,15 +412,15 @@ const RideBookingScreen = () => {
             contentContainerStyle={[styles.modalContent, styles.bookingModal]}
           >
             <Surface style={styles.modalSurface}>
-              <ScrollView style={styles.bookingScrollView}>
-                <Text style={styles.modalTitle}>Book Your Ride</Text>
+              <ScrollView 
+                style={styles.bookingScrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.bookingScrollContent}
+              >
+                <Text style={styles.modalTitle}>Book Your Auto</Text>
                 
                 <View style={styles.destinationCard}>
-                  <MaterialCommunityIcons 
-                    name="map-marker-radius" 
-                    size={24} 
-                    color={theme.colors.primary} 
-                  />
+                  {renderIcon(selectedLocation?.iconName || 'map-marker-radius')}
                   <View style={styles.destinationTextContainer}>
                     <Text style={styles.destinationTitle}>Destination</Text>
                     <Text style={styles.destinationName}>
@@ -250,36 +433,43 @@ const RideBookingScreen = () => {
 
                 <List.Section style={styles.section}>
                   <View style={styles.optionContainer}>
-                    <MaterialCommunityIcons 
-                      name="account-group" 
-                      size={24} 
-                      color={theme.colors.primary} 
-                    />
-                    <Text style={styles.optionTitle}>Number of Seats</Text>
+                    {renderIcon('car-side')}
+                    <Text style={styles.optionTitle}>Auto Type</Text>
                   </View>
-                  <SegmentedButtons
-                    value={numberOfSeats.toString()}
-                    onValueChange={(value) => setNumberOfSeats(parseInt(value))}
-                    buttons={[
-                      { value: '1', label: '1' },
-                      { value: '2', label: '2' },
-                      { value: '3', label: '3' },
-                      { value: '4', label: '4' },
-                    ]}
-                    style={styles.segmentedButton}
-                  />
+                  <RadioButton.Group 
+                    onValueChange={value => setAutoType(value)} 
+                    value={autoType}
+                  >
+                    <View style={styles.radioContainer}>
+                      <View style={styles.radioOption}>
+                        <RadioButton value="small" />
+                        <Text>Small Auto (max 3 passengers)</Text>
+                      </View>
+                      <View style={styles.radioOption}>
+                        <RadioButton value="big" />
+                        <Text>Big Auto (max 6 passengers)</Text>
+                      </View>
+                    </View>
+                  </RadioButton.Group>
+                </List.Section>
+
+                <List.Section style={styles.section}>
+                  <View style={styles.optionContainer}>
+                    {renderIcon('account-group')}
+                    <Text style={styles.optionTitle}>Number of Passengers</Text>
+                  </View>
+                  {renderPassengerSelection()}
                   <Text style={styles.costInfo}>
-                    ₹{numberOfSeats <= 2 ? '250' : '150'} per seat
+                    {autoType === 'big' 
+                      ? `₹${selectedLocation?.pricing.big.minRatePerHead} per person (1-4 passengers) or ₹${selectedLocation?.pricing.big.autoRate} for 5-6 passengers`
+                      : `₹${selectedLocation?.pricing.small.minRatePerHead} per person (1-2 passengers) or ₹${selectedLocation?.pricing.small.autoRate} for 3 passengers`
+                    }
                   </Text>
                 </List.Section>
 
                 <List.Section style={styles.section}>
                   <View style={styles.optionContainer}>
-                    <MaterialCommunityIcons 
-                      name="clock-outline" 
-                      size={24} 
-                      color={theme.colors.primary} 
-                    />
+                    {renderIcon('clock-outline')}
                     <Text style={styles.optionTitle}>Ride Mode</Text>
                   </View>
                   <SegmentedButtons
@@ -357,7 +547,7 @@ const RideBookingScreen = () => {
             </Surface>
           </PaperModal>
         </Portal>
-      </View>
+      </SafeAreaView>
     </PaperProvider>
   );
 };
@@ -381,6 +571,7 @@ const styles = StyleSheet.create({
   searchCard: {
     elevation: 4,
     borderRadius: 12,
+    backgroundColor: '#fff',
   },
   searchContent: {
     flexDirection: 'row',
@@ -395,13 +586,14 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   modalContent: {
-    margin: SCREEN_WIDTH * 0.05,
+    backgroundColor: 'transparent',
+    margin: SCREEN_WIDTH * 0.025,
     maxHeight: SCREEN_HEIGHT * MODAL_HEIGHT_PERCENTAGE,
     width: SCREEN_WIDTH * MODAL_WIDTH_PERCENTAGE,
     alignSelf: 'center',
   },
   locationListModal: {
-    maxHeight: SCREEN_HEIGHT * 0.6,
+    maxHeight: SCREEN_HEIGHT * 0.7,
   },
   bookingModal: {
     maxHeight: SCREEN_HEIGHT * MODAL_HEIGHT_PERCENTAGE,
@@ -415,12 +607,16 @@ const styles = StyleSheet.create({
   },
   locationScrollView: {
     flexGrow: 0,
+    marginTop: 10,
   },
   bookingScrollView: {
     flexGrow: 1,
   },
+  bookingScrollContent: {
+    paddingBottom: 20,
+  },
   modalTitle: {
-    fontSize: SCREEN_WIDTH * 0.06,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
@@ -428,6 +624,7 @@ const styles = StyleSheet.create({
   locationCard: {
     marginBottom: 12,
     elevation: 2,
+    backgroundColor: '#fff',
   },
   locationCardContent: {
     flexDirection: 'row',
@@ -457,6 +654,7 @@ const styles = StyleSheet.create({
   },
   destinationTextContainer: {
     marginLeft: 15,
+    flex: 1,
   },
   destinationTitle: {
     fontSize: 14,
@@ -472,17 +670,25 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+    paddingHorizontal: 4,
   },
   optionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    paddingHorizontal: 4,
   },
   optionTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
+  },
+  radioContainer: {
+    marginHorizontal: 4,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   segmentedButton: {
     marginBottom: 12,
@@ -519,13 +725,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   costAmount: {
-    fontSize: SCREEN_WIDTH * 0.06,
+    fontSize: 24,
     fontWeight: 'bold',
     color: theme.colors.primary,
   },
   buttonContainer: {
     gap: 12,
-    marginBottom: 12,
+    marginTop: 12,
+    paddingHorizontal: 4,
   },
   confirmButton: {
     marginBottom: 0,
@@ -538,6 +745,22 @@ const styles = StyleSheet.create({
   buttonContent: {
     paddingVertical: 8,
   },
+  passengerSelector: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  passengerSelectorContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  passengerSelectorText: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontWeight: '500',
+  }
 });
 
-export default RideBookingScreen;
+export default AutoBookingScreen;

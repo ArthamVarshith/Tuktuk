@@ -33,9 +33,17 @@ const UserRegister = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      await firebase.auth().createUserWithEmailAndPassword(email, password);
+      // Create user in Firebase Authentication
+      const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+      const user = userCredential.user;
+  
+      // Store user email in Firestore
+      await firebase.firestore().collection("users").doc(user.uid).set({
+        email: user.email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+  
       alert("Account created successfully!");
-      navigation.navigate("Login");
     } catch (error) {
       alert(error.message);
     } finally {

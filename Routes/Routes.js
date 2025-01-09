@@ -6,7 +6,11 @@ import LandingPage from "../Screens/LandingPage";
 import UserLogin from "../Screens/UserLogin";
 import UserRegister from "../Screens/UserRegister";
 import DriverLogin from "../Screens/DriverLogin";
-import BookingScreen from "../Screens/BookingScreen";
+import DriverOTPScreen from "../Screens/DriverOTPScreen";
+import AutoBookingScreen from "../Screens/BookingScreen";
+import DriverScreen from "../Screens/DriverScreen";
+import Profile from "../Screens/Profile";
+import History from '../Screens/History'
 
 const Routes = () => {
   const Stack = createStackNavigator();
@@ -36,14 +40,21 @@ const Routes = () => {
     >
       {!user ? (
         <>
-        <Stack.Screen name="LandingPage" component={LandingPage}/>
+          <Stack.Screen name="LandingPage" component={LandingPage} />
           <Stack.Screen name="UserLogin" component={UserLogin} />
           <Stack.Screen name="UserRegister" component={UserRegister} />
-          <Stack.Screen name="DriverLogin" component={DriverLogin}/>
+          <Stack.Screen name="DriverLogin" component={DriverLogin} />
+          <Stack.Screen name="DriverOTPScreen" component={DriverOTPScreen} />
+          <Stack.Screen name="DriverScreen" component={DriverScreen} />
         </>
       ) : (
         <>
-          <Stack.Screen name="BookingScreen" component={BookingScreen} />
+          <Stack.Screen
+            name="AutoBookingScreen"
+            component={AutoBookingScreen}
+          />
+          <Stack.Screen name="Profile" component={Profile}/>
+          <Stack.Screen name="History" component={History}/>
         </>
       )}
     </Stack.Navigator>

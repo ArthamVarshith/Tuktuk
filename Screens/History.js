@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { firestore, auth } from "../Firebase/Firebase";
 
 const RideHistoryPage = () => {
@@ -34,8 +34,9 @@ const RideHistoryPage = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#1E90FF" />
+        <Text style={styles.loadingText}>Fetching your ride history...</Text>
       </View>
     );
   }
@@ -43,7 +44,7 @@ const RideHistoryPage = () => {
   if (error) {
     return (
       <View style={styles.container}>
-        <Text>{error}</Text>
+        <Text style={styles.errorText}>{error}</Text>
       </View>
     );
   }
@@ -74,10 +75,27 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#fff",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f1f1f1",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 18,
+    color: "#888",
+  },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 20,
+    textAlign: "center",
+    color: "#333",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 18,
     textAlign: "center",
   },
   rideCard: {
@@ -94,6 +112,7 @@ const styles = StyleSheet.create({
   rideDetails: {
     fontSize: 16,
     marginBottom: 5,
+    color: "#555",
   },
 });
 

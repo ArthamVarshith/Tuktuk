@@ -8,13 +8,17 @@ import {
   ScrollView,
   Platform,
   SafeAreaView,
+  FlatList,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { firebase } from "../Firebase/Firebase";
 import AnimatedSearchText from "../components/AnimatedSearchText";
 import AutoPoolButton from "../components/AutoPoolButton";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import * as Location from "expo-location";
+import { firestore, auth } from "../Firebase/Firebase";
+import { decode } from "@mapbox/polyline"; // For decoding polyline strings
 import {
   Button,
   Text,
@@ -222,7 +226,7 @@ const SearchingDriversModal = ({ visible, onClose }) => {
   );
 };
 
-const AutoBookingScreen = ({navigation}) => {
+const AutoBookingScreen = ({ navigation }) => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showLocationList, setShowLocationList] = useState(false);
   const [showRideDetailsModal, setShowRideDetailsModal] = useState(false);
@@ -326,6 +330,23 @@ const AutoBookingScreen = ({navigation}) => {
     }
   };
 
+  const generateDestinationCode = (destinationName) => {
+    // Split the destination name into words
+    const words = destinationName.split(" ");
+
+    // Take the first letter of the first two words (if available)
+    const initials =
+      words.length > 1
+        ? words[0][0].toUpperCase() + words[1][0].toUpperCase()
+        : words[0][0].toUpperCase();
+
+    // Append a random number between 1 and 99
+    const randomNumber = Math.floor(Math.random() * 99) + 1;
+
+    // Combine initials and number to create the code
+    return `${initials}${randomNumber}`;
+  };
+
   const handleRideConfirm = async () => {
     if (!currentUser) {
       alert("Please login to book a ride");
@@ -344,12 +365,15 @@ const AutoBookingScreen = ({navigation}) => {
     const rideDate = rideMode === "realtime" ? new Date() : selectedDate;
     const rideTime = rideMode === "realtime" ? new Date() : selectedTime;
 
+    const destinationCode = generateDestinationCode(selectedLocation.name);
+
     const bookingDetails = {
       destination: {
         name: selectedLocation.name,
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
       },
+      destinationCode: destinationCode,
       autoType: autoType,
       passengers: numberOfPassengers,
       rideMode: rideMode,
@@ -484,30 +508,202 @@ const AutoBookingScreen = ({navigation}) => {
     }).start();
   };
 
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [destination, setDestination] = useState(null);
+  const [rideStarted, setRideStarted] = useState(false);
+
+  // Request location permission
+  const requestLocationPermission = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "Location permission is required.");
+      return false;
+    }
+    return true;
+  };
+
+  // Fetch ride data from Firestore
+  const fetchRideData = async (userEmail) => {
+    try {
+      const rideRef = firestore.collection("bookings"); // Collection name for rides
+      const querySnapshot = await rideRef
+        .where("userEmail", "==", userEmail)
+        .get();
+
+      if (querySnapshot.empty) {
+        console.log("No matching ride data found");
+        return null;
+      }
+
+      const rideData = querySnapshot.docs[0].data();
+      return rideData;
+    } catch (error) {
+      console.log("Error fetching ride data:", error);
+    }
+  };
+
+  // Check if the ride conditions are met
+  const checkIfRideShouldStart = (rideData) => {
+    if (!rideData) return;
+
+    const { status, date, destination } = rideData;
+
+    const currentDate = new Date().toISOString().split("T")[0];
+
+    if (
+      status === "confirmed" &&
+      date.toDate().toISOString().split("T")[0] === currentDate
+    ) {
+      setDestination(destination);
+      setRideStarted(true);
+    } else {
+      Alert.alert("Ride Not Active", "No active ride found for today.");
+    }
+  };
+
+  // Track user's location
+  const startLocationTracking = async () => {
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    setCurrentLocation({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    });
+
+    // Start watching the position for continuous updates
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 1000,
+      },
+      (location) => {
+        setCurrentLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    );
+  };
+
+  // Check and start ride tracking for current user
+  const initiateRideTracking = async () => {
+    const userEmail = auth.currentUser?.email; // Get the current user's email from Firebase Auth
+    if (!userEmail) {
+      Alert.alert("User not logged in", "Please log in to track your ride.");
+      return;
+    }
+
+    const rideData = await fetchRideData(userEmail);
+    checkIfRideShouldStart(rideData);
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      const hasPermission = await requestLocationPermission();
+      if (hasPermission) {
+        initiateRideTracking();
+      }
+    };
+    initialize();
+  }, []);
+
+  useEffect(() => {
+    if (rideStarted) {
+      startLocationTracking();
+    }
+  }, [rideStarted]);
+
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+
+  // Function to fetch route from an API
+  const fetchRoute = async (currentLocation, destination) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&departure_time=now&traffic_model=best_guess&key=AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3U`
+      );
+      const data = await response.json();
+
+      if (data.routes.length > 0) {
+        // Decode detailed polyline points
+        const detailedCoordinates = [];
+        data.routes[0].legs.forEach((leg) => {
+          leg.steps.forEach((step) => {
+            const points = decode(step.polyline.points);
+            const coordinates = points.map((point) => ({
+              latitude: point[0],
+              longitude: point[1],
+            }));
+            detailedCoordinates.push(...coordinates);
+          });
+        });
+
+        setRouteCoordinates(detailedCoordinates);
+      }
+    } catch (error) {
+      console.error("Error fetching route:", error);
+    }
+  };
+
+  // Fetch route whenever location changes
+  useEffect(() => {
+    if (currentLocation && destination) {
+      fetchRoute(currentLocation, destination);
+    }
+  }, [currentLocation, destination]);
+
   return (
     <PaperProvider theme={theme}>
       <SafeAreaView style={styles.container}>
         <MapView
           style={styles.map}
           initialRegion={{
-            latitude: 16.4825,
-            longitude: 80.616,
+            latitude: currentLocation?.latitude || 16.4825,
+            longitude: currentLocation?.longitude || 80.616,
             latitudeDelta: 0.5,
             longitudeDelta: 0.5,
           }}
+          showsUserLocation={true}
+          followsUserLocation={true}
         >
-          {PREDEFINED_LOCATIONS.map((location) => (
-            <Marker
-              key={location.id}
-              coordinate={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-              }}
-              onPress={() => handleLocationSelect(location)}
-              title={location.name}
-              description={location.description}
-            />
-          ))}
+          {currentLocation && destination ? (
+            <>
+              {/* Current Location Marker */}
+              <Marker
+                coordinate={currentLocation}
+                title="Current Location"
+                description="Your current location"
+              />
+
+              {/* Destination Marker */}
+              <Marker
+                coordinate={destination}
+                title="Destination Location"
+                description="Your ride destination"
+              />
+
+              {/* Polyline between Current Location and Destination */}
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeColor="#0000FF"
+                strokeWidth={5}
+              />
+            </>
+          ) : (
+            /* Render Predefined Locations when Current Location and Destination are not set */
+            PREDEFINED_LOCATIONS.map((location) => (
+              <Marker
+                key={location.id}
+                coordinate={{
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                }}
+                onPress={() => handleLocationSelect(location)}
+                title={location.name}
+                description={location.description}
+              />
+            ))
+          )}
         </MapView>
 
         <Animated.View
@@ -526,7 +722,6 @@ const AutoBookingScreen = ({navigation}) => {
             },
           ]}
         >
-
           <TouchableOpacity
             onPress={() => {
               if (!hasActiveBooking) {
@@ -548,65 +743,65 @@ const AutoBookingScreen = ({navigation}) => {
         </Animated.View>
 
         <View style={styles.container1}>
-            {/* Profile Button */}
-            <Animated.View
-              style={[
-                styles.extraButton,
-                {
-                  transform: [
-                    { scale: scaleAnim },
-                    {
-                      translateY: scaleAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -70],
-                      }),
-                    },
-                  ],
-                },
-              ]}
+          {/* Profile Button */}
+          <Animated.View
+            style={[
+              styles.extraButton,
+              {
+                transform: [
+                  { scale: scaleAnim },
+                  {
+                    translateY: scaleAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -70],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigation.navigate("Profile")}
             >
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate("Profile")}
-              >
-                <MaterialIcons name="person" size={24} color="#fff" />
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* History Button */}
-            <Animated.View
-              style={[
-                styles.extraButton,
-                {
-                  transform: [
-                    { scale: scaleAnim },
-                    {
-                      translateY: scaleAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -140],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate("History")}
-              >
-                <MaterialIcons name="history" size={24} color="#fff" />
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Main Circular Button */}
-            <TouchableOpacity style={styles.mainButton} onPress={toggleButtons}>
-              <MaterialIcons
-                name={expanded ? "close" : "menu"}
-                size={28}
-                color="#fff"
-              />
+              <MaterialIcons name="person" size={24} color="#fff" />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
+
+          {/* History Button */}
+          <Animated.View
+            style={[
+              styles.extraButton,
+              {
+                transform: [
+                  { scale: scaleAnim },
+                  {
+                    translateY: scaleAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -140],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigation.navigate("History")}
+            >
+              <MaterialIcons name="history" size={24} color="#fff" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Main Circular Button */}
+          <TouchableOpacity style={styles.mainButton} onPress={toggleButtons}>
+            <MaterialIcons
+              name={expanded ? "close" : "menu"}
+              size={28}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        </View>
 
         <Portal>
           <PaperModal
@@ -619,12 +814,10 @@ const AutoBookingScreen = ({navigation}) => {
           >
             <Surface style={styles.modalSurface}>
               <Text style={styles.modalTitle}>Select Destination</Text>
-              <ScrollView
-                style={styles.locationScrollView}
-                showsVerticalScrollIndicator={false}
-              >
-                <AutoPoolButton />
-                {PREDEFINED_LOCATIONS.map((location) => (
+              <FlatList
+                data={PREDEFINED_LOCATIONS}
+                ListHeaderComponent={<AutoPoolButton />}
+                renderItem={({ item: location }) => (
                   <TouchableOpacity
                     key={location.id}
                     onPress={() => handleLocationSelect(location)}
@@ -643,8 +836,10 @@ const AutoBookingScreen = ({navigation}) => {
                       </Card.Content>
                     </Card>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+                showsVerticalScrollIndicator={false}
+                style={styles.locationScrollView}
+              />
             </Surface>
           </PaperModal>
         </Portal>

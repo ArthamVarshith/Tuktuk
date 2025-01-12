@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { firestore, auth } from "../Firebase/Firebase";
+import { firestore, auth, firebase} from "../Firebase/Firebase";
 
 const ProfilePage = () => {
   const [name, setName] = useState("");
@@ -69,6 +69,11 @@ const ProfilePage = () => {
     }
   };
 
+  const Signout = () => {
+    firebase.auth().signOut()
+    .then(Alert.alert("Signed out successfully!!"))
+  }
+
   return (
     <View style={styles.container}>
       <Image source={{ uri: profilePic }} style={styles.profilePic} />
@@ -87,6 +92,10 @@ const ProfilePage = () => {
 
       <TouchableOpacity style={styles.button} onPress={handleUpdateProfile}>
         <Text style={styles.buttonText}>Update Profile</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={Signout}>
+        <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
     </View>
   );

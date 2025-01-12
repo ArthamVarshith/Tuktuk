@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Dimensions,
   RefreshControl
 } from 'react-native';
 import { firebase } from '../Firebase/Firebase';

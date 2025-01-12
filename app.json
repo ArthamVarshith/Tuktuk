@@ -17,6 +17,12 @@
     },
     "android": {
       "package": "com.appenexus.TukTuk",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3U"
+        }
+      },
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -26,11 +32,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "@react-native-google-signin/google-signin"
-      ]
-    ],
     "extra": {
       "eas": {
         "projectId": "27da498a-cd92-40d4-b52f-9b78e637edd7"

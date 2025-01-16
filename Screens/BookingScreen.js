@@ -18,7 +18,7 @@ import AutoPoolButton from "../components/AutoPoolButton";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import * as Location from "expo-location";
 import { firestore, auth } from "../Firebase/Firebase";
-import { decode } from "@mapbox/polyline"; // For decoding polyline strings
+import { decode } from "@mapbox/polyline";
 import {
   Button,
   Text,
@@ -666,6 +666,7 @@ const AutoBookingScreen = ({ navigation }) => {
           showsUserLocation={true}
           followsUserLocation={true}
         >
+          {/* Render markers and route if locations are available */}
           {currentLocation && destination ? (
             <>
               {/* Current Location Marker */}
@@ -682,15 +683,17 @@ const AutoBookingScreen = ({ navigation }) => {
                 description="Your ride destination"
               />
 
-              {/* Polyline between Current Location and Destination */}
-              <Polyline
-                coordinates={routeCoordinates}
-                strokeColor="#0000FF"
-                strokeWidth={5}
-              />
+              {/* Polyline for route */}
+              {routeCoordinates.length > 0 && (
+                <Polyline
+                  coordinates={routeCoordinates}
+                  strokeColor="#0000FF"
+                  strokeWidth={5}
+                />
+              )}
             </>
           ) : (
-            /* Render Predefined Locations when Current Location and Destination are not set */
+            /* Fallback for predefined locations */
             PREDEFINED_LOCATIONS.map((location) => (
               <Marker
                 key={location.id}

@@ -17,7 +17,6 @@
     },
     "android": {
       "package": "com.appenexus.TukTuk",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3U"

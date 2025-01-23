@@ -7,7 +7,7 @@ import UserLogin from "../Screens/UserLogin";
 import UserRegister from "../Screens/UserRegister";
 import DriverLogin from "../Screens/DriverLogin";
 import DriverOTPScreen from "../Screens/DriverOTPScreen";
-import AutoBookingScreen from "../Screens/BookingScreen";
+import BookingScreen from "../Screens/BookingScreen";
 import DriverScreen from "../Screens/DriverScreen";
 import Profile from "../Screens/Profile";
 import History from '../Screens/History'
@@ -50,8 +50,8 @@ const Routes = () => {
       ) : (
         <>
           <Stack.Screen
-            name="AutoBookingScreen"
-            component={AutoBookingScreen}
+            name="BookingScreen"
+            component={BookingScreen}
           />
           <Stack.Screen name="Profile" component={Profile}/>
           <Stack.Screen name="History" component={History}/>

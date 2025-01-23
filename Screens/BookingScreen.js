@@ -226,7 +226,7 @@ const SearchingDriversModal = ({ visible, onClose }) => {
   );
 };
 
-const AutoBookingScreen = ({ navigation }) => {
+const BookingScreen = ({ navigation }) => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showLocationList, setShowLocationList] = useState(false);
   const [showRideDetailsModal, setShowRideDetailsModal] = useState(false);
@@ -561,30 +561,47 @@ const AutoBookingScreen = ({ navigation }) => {
     }
   };
 
-  // Track user's location
-  const startLocationTracking = async () => {
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-    setCurrentLocation({
+  // Track user's location and update Firestore
+const startLocationTracking = async () => {
+  const location = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.High,
+  });
+  setCurrentLocation({
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+  });
+
+  // Update Firestore with the initial location
+  const userEmail = auth.currentUser?.email; // Ensure user is logged in
+  if (userEmail) {
+    updateUserLocationInFirestore(userEmail, {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
     });
+  }
 
-    // Start watching the position for continuous updates
-    Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 1000,
-      },
-      (location) => {
-        setCurrentLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
+  // Start watching the position for continuous updates
+  Location.watchPositionAsync(
+    {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 5000, // Update every 5 seconds
+      distanceInterval: 0, // Update regardless of movement
+    },
+    (location) => {
+      const updatedLocation = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      setCurrentLocation(updatedLocation);
+
+      // Update Firestore with the new location
+      if (userEmail) {
+        updateUserLocationInFirestore(userEmail, updatedLocation);
       }
-    );
-  };
+    }
+  );
+};
 
   // Check and start ride tracking for current user
   const initiateRideTracking = async () => {
@@ -651,6 +668,30 @@ const AutoBookingScreen = ({ navigation }) => {
       fetchRoute(currentLocation, destination);
     }
   }, [currentLocation, destination]);
+
+  console.log(MapView);
+
+
+
+  // Update location in Firestore
+const updateUserLocationInFirestore = async (userEmail, location) => {
+  try {
+    const userLocationRef = firestore.collection("userLocations").doc(userEmail); // Create a document with user's email as ID
+    await userLocationRef.set({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      timestamp: new Date().toISOString(), // Add a timestamp
+    });
+    console.log("User location updated in Firestore.");
+  } catch (error) {
+    console.error("Error updating user location in Firestore:", error);
+  }
+};
+
+
+
+
+
 
   return (
     <PaperProvider theme={theme}>
@@ -1301,4 +1342,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AutoBookingScreen;
+export default BookingScreen;

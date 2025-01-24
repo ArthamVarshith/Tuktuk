@@ -16,10 +16,11 @@
       "supportsTablet": true
     },
     "android": {
+      
       "package": "com.appenexus.TukTuk",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3U"
+          "apiKey": "AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3Uasdsad"
         }
       },
       "versionCode": 1,

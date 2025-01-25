@@ -10,7 +10,8 @@ import DriverOTPScreen from "../Screens/DriverOTPScreen";
 import BookingScreen from "../Screens/BookingScreen";
 import DriverScreen from "../Screens/DriverScreen";
 import Profile from "../Screens/Profile";
-import History from '../Screens/History'
+import History from "../Screens/History";
+import BookedScreen from "../Screens/BookedScreens";
 
 const Routes = () => {
   const Stack = createStackNavigator();
@@ -49,12 +50,10 @@ const Routes = () => {
         </>
       ) : (
         <>
-          <Stack.Screen
-            name="BookingScreen"
-            component={BookingScreen}
-          />
-          <Stack.Screen name="Profile" component={Profile}/>
-          <Stack.Screen name="History" component={History}/>
+          <Stack.Screen name="BookedScreen" component={BookedScreen} />
+          <Stack.Screen name="BookingScreen" component={BookingScreen} />
+          <Stack.Screen name="Profile" component={Profile} />
+          <Stack.Screen name="History" component={History} />
         </>
       )}
     </Stack.Navigator>

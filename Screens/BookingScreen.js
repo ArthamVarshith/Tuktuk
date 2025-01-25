@@ -9,6 +9,7 @@ import {
   Platform,
   SafeAreaView,
   FlatList,
+  Alert
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -19,6 +20,7 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import * as Location from "expo-location";
 import { firestore, auth } from "../Firebase/Firebase";
 import { decode } from "@mapbox/polyline";
+import * as SMS from "expo-sms";
 import {
   Button,
   Text,
@@ -247,6 +249,74 @@ const BookingScreen = ({ navigation }) => {
   const [expanded, setExpanded] = useState(false);
   const scaleAnim = React.useRef(new Animated.Value(0)).current;
 
+  const sendSOS = async () => {
+    try {
+      // Requesting location permission
+      const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
+      if (locationStatus !== 'granted') {
+        Alert.alert("Permission Denied", "You need to allow location permission.");
+        return;
+      }
+  
+      // Get the current location
+      const { coords } = await Location.getCurrentPositionAsync();
+      const message = `Emergency! I need help. My location: https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
+  
+      console.log("Sending SOS message:", message); // Debugging log for the message
+  
+      // Send SMS
+      const result = await SMS.sendSMSAsync(
+        ['+919182879315'], // Your emergency contact number
+        message
+      );
+  
+      console.log("SMS result:", result); // Debugging log for SMS result
+  
+      if (result.result === 'sent') {
+        Alert.alert("SOS Sent!", "Your SOS message has been sent.");
+      }
+    } catch (error) {
+      console.error("Error sending SOS:", error); // Log the error to understand the issue
+      Alert.alert("Error", "An error occurred while sending the SOS message.");
+    }
+  };
+
+
+    const [scale] = useState(new Animated.Value(1)); // Animation for scaling effect
+  const [opacity] = useState(new Animated.Value(1)); // Animation for opacity effecte
+
+  // Repeating animation to create a pulsing effect
+  const startPulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.2, // Scale up
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1, // Scale back down
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.8, // Decrease opacity to create a dimming effect
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1, // Restore full opacity
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  useEffect(() => {
+    startPulse(); // Start the pulse animation on component mount
+  }, []);
+
   const handleSearchingModalClose = async () => {
     if (activeBookingId) {
       try {
@@ -394,10 +464,18 @@ const BookingScreen = ({ navigation }) => {
 
       // Listen for status changes
       const unsubscribe = bookingsRef.doc(docRef.id).onSnapshot((doc) => {
-        if (doc.exists && doc.data().status !== "Pending") {
-          setShowSearchingModal(false);
-          setHasActiveBooking(false);
-          unsubscribe();
+        if (doc.exists) {
+          const bookingStatus = doc.data().status;
+          if (bookingStatus === "Completed") {
+            // Navigate to BookedScreen and pass the ride details
+            navigation.navigate("BookedScreen", {
+              rideDetails: doc.data(),
+              bookingId: docRef.id,
+            });
+            setShowSearchingModal(false);
+            setHasActiveBooking(false);
+            unsubscribe();
+          }
         }
       });
     } catch (error) {
@@ -562,46 +640,46 @@ const BookingScreen = ({ navigation }) => {
   };
 
   // Track user's location and update Firestore
-const startLocationTracking = async () => {
-  const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.High,
-  });
-  setCurrentLocation({
-    latitude: location.coords.latitude,
-    longitude: location.coords.longitude,
-  });
-
-  // Update Firestore with the initial location
-  const userEmail = auth.currentUser?.email; // Ensure user is logged in
-  if (userEmail) {
-    updateUserLocationInFirestore(userEmail, {
+  const startLocationTracking = async () => {
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    setCurrentLocation({
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
     });
-  }
 
-  // Start watching the position for continuous updates
-  Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.High,
-      timeInterval: 5000, // Update every 5 seconds
-      distanceInterval: 0, // Update regardless of movement
-    },
-    (location) => {
-      const updatedLocation = {
+    // Update Firestore with the initial location
+    const userEmail = auth.currentUser?.email; // Ensure user is logged in
+    if (userEmail) {
+      updateUserLocationInFirestore(userEmail, {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-      };
-
-      setCurrentLocation(updatedLocation);
-
-      // Update Firestore with the new location
-      if (userEmail) {
-        updateUserLocationInFirestore(userEmail, updatedLocation);
-      }
+      });
     }
-  );
-};
+
+    // Start watching the position for continuous updates
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000, // Update every 5 seconds
+        distanceInterval: 0, // Update regardless of movement
+      },
+      (location) => {
+        const updatedLocation = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+
+        setCurrentLocation(updatedLocation);
+
+        // Update Firestore with the new location
+        if (userEmail) {
+          updateUserLocationInFirestore(userEmail, updatedLocation);
+        }
+      }
+    );
+  };
 
   // Check and start ride tracking for current user
   const initiateRideTracking = async () => {
@@ -671,27 +749,22 @@ const startLocationTracking = async () => {
 
   console.log(MapView);
 
-
-
   // Update location in Firestore
-const updateUserLocationInFirestore = async (userEmail, location) => {
-  try {
-    const userLocationRef = firestore.collection("userLocations").doc(userEmail); // Create a document with user's email as ID
-    await userLocationRef.set({
-      latitude: location.latitude,
-      longitude: location.longitude,
-      timestamp: new Date().toISOString(), // Add a timestamp
-    });
-    console.log("User location updated in Firestore.");
-  } catch (error) {
-    console.error("Error updating user location in Firestore:", error);
-  }
-};
-
-
-
-
-
+  const updateUserLocationInFirestore = async (userEmail, location) => {
+    try {
+      const userLocationRef = firestore
+        .collection("userLocations")
+        .doc(userEmail); // Create a document with user's email as ID
+      await userLocationRef.set({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: new Date().toISOString(), // Add a timestamp
+      });
+      console.log("User location updated in Firestore.");
+    } catch (error) {
+      console.error("Error updating user location in Firestore:", error);
+    }
+  };
 
   return (
     <PaperProvider theme={theme}>
@@ -707,47 +780,6 @@ const updateUserLocationInFirestore = async (userEmail, location) => {
           showsUserLocation={true}
           followsUserLocation={true}
         >
-          {/* Render markers and route if locations are available */}
-          {currentLocation && destination ? (
-            <>
-              {/* Current Location Marker */}
-              <Marker
-                coordinate={currentLocation}
-                title="Current Location"
-                description="Your current location"
-              />
-
-              {/* Destination Marker */}
-              <Marker
-                coordinate={destination}
-                title="Destination Location"
-                description="Your ride destination"
-              />
-
-              {/* Polyline for route */}
-              {routeCoordinates.length > 0 && (
-                <Polyline
-                  coordinates={routeCoordinates}
-                  strokeColor="#0000FF"
-                  strokeWidth={5}
-                />
-              )}
-            </>
-          ) : (
-            /* Fallback for predefined locations */
-            PREDEFINED_LOCATIONS.map((location) => (
-              <Marker
-                key={location.id}
-                coordinate={{
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                }}
-                onPress={() => handleLocationSelect(location)}
-                title={location.name}
-                description={location.description}
-              />
-            ))
-          )}
         </MapView>
 
         <Animated.View
@@ -1041,6 +1073,24 @@ const updateUserLocationInFirestore = async (userEmail, location) => {
             onClose={handleSearchingModalClose}
           />
         </Portal>
+
+        {/* Animated SOS Button */}
+      <Animated.View
+        style={[
+          styles.sosButtonContainer,
+          {
+            opacity: opacity, // Apply animated opacity
+            transform: [{ scale: scale }], // Apply animated scaling
+          },
+        ]}
+      >
+        <MaterialIcons
+          name="error-outline" // SOS icon (you can choose any icon)
+          size={38}
+          color="red" // Bright color (Tomato Red)
+          onPress={sendSOS}
+        />
+      </Animated.View>
       </SafeAreaView>
     </PaperProvider>
   );
@@ -1339,6 +1389,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
+  },
+  sosButtonContainer: {
+    position: "absolute",
+    bottom: 40, // Adjust as needed
+    transform: [{ translateX: -100 }], // Center the button
+    backgroundColor: "white", // Optional background for the button container
+    borderRadius: 30,
+    width: "10%", // Adjust width for better fit
+    alignItems: "center",
+    marginLeft: 160
   },
 });
 

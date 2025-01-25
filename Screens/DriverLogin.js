@@ -3,13 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Button, Per
 import { firebase } from "../Firebase/Firebase";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as Location from "expo-location";
-import * as SMS from "expo-sms";
 
 const DriverLogin = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [loading, setLoading] = useState(false);
   const recaptchaVerifier = React.useRef(null);
-  const [location, setLocation] = useState(null);
 
   // Function to request location permission
   const requestLocationPermission = async () => {
@@ -23,48 +20,6 @@ const DriverLogin = ({ navigation }) => {
     } catch (error) {
       console.error("Error requesting location permission:", error);
       return false;
-    }
-  };
-
-  // Check and request SMS permissions on Android
-  const requestSMSPermissions = async () => {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.SEND_SMS,
-      {
-        title: "SMS Permission",
-        message: "This app needs access to send SMS messages.",
-      }
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
-  };
-
-  const sendSOS = async () => {
-    // Requesting location permission
-    const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-  
-    if (locationStatus !== 'granted') {
-      Alert.alert("Permission Denied", "You need to allow location permission.");
-      return;
-    }
-  
-    // Get the current location
-    const { coords } = await Location.getCurrentPositionAsync();
-    const message = `Emergency! I need help. My location: https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
-  
-    try {
-      // Send SMS
-      const result = await SMS.sendSMSAsync(
-        ['+919182879315'], // Your emergency contact number
-        message
-      );
-  
-      if (result.result === 'sent') {
-        Alert.alert("SOS Sent!", "Your SOS message has been sent.");
-      } else {
-        Alert.alert("Error", "Failed to send SOS.");
-      }
-    } catch (error) {
-      Alert.alert("Error", "An error occurred while sending the SOS message.");
     }
   };
   
@@ -89,11 +44,6 @@ const DriverLogin = ({ navigation }) => {
       >
         <Text style={styles.buttonText}>Send OTP</Text>
       </TouchableOpacity>
-
-      <View style={{marginTop: 20}}>
-        <Text>SOS Emergency Button</Text>
-        <Button title="Send SOS" onPress={sendSOS} />
-      </View>
     </View>
   );
 };

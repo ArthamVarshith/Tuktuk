@@ -9,7 +9,7 @@ import {
   Platform,
   SafeAreaView,
   FlatList,
-  Alert
+  Alert,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -248,31 +248,34 @@ const BookingScreen = ({ navigation }) => {
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const scaleAnim = React.useRef(new Animated.Value(0)).current;
-
   const sendSOS = async () => {
     try {
       // Requesting location permission
-      const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-      if (locationStatus !== 'granted') {
-        Alert.alert("Permission Denied", "You need to allow location permission.");
+      const { status: locationStatus } =
+        await Location.requestForegroundPermissionsAsync();
+      if (locationStatus !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "You need to allow location permission."
+        );
         return;
       }
-  
+
       // Get the current location
       const { coords } = await Location.getCurrentPositionAsync();
       const message = `Emergency! I need help. My location: https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
-  
+
       console.log("Sending SOS message:", message); // Debugging log for the message
-  
+
       // Send SMS
       const result = await SMS.sendSMSAsync(
-        ['+919182879315'], // Your emergency contact number
+        ["+919182879315"], // Your emergency contact number
         message
       );
-  
+
       console.log("SMS result:", result); // Debugging log for SMS result
-  
-      if (result.result === 'sent') {
+
+      if (result.result === "sent") {
         Alert.alert("SOS Sent!", "Your SOS message has been sent.");
       }
     } catch (error) {
@@ -281,8 +284,7 @@ const BookingScreen = ({ navigation }) => {
     }
   };
 
-
-    const [scale] = useState(new Animated.Value(1)); // Animation for scaling effect
+  const [scale] = useState(new Animated.Value(1)); // Animation for scaling effect
   const [opacity] = useState(new Animated.Value(1)); // Animation for opacity effecte
 
   // Repeating animation to create a pulsing effect
@@ -587,200 +589,241 @@ const BookingScreen = ({ navigation }) => {
   };
 
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [loading, setLoading] = useState(true); // Added state for loading
   const [destination, setDestination] = useState(null);
   const [rideStarted, setRideStarted] = useState(false);
 
-  // Request location permission
-  const requestLocationPermission = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Denied", "Location permission is required.");
-      return false;
-    }
-    return true;
-  };
+  // // Request location permission
+  // const requestLocationPermission = async () => {
+  //   const { status } = await Location.requestForegroundPermissionsAsync();
+  //   if (status !== "granted") {
+  //     Alert.alert("Permission Denied", "Location permission is required.");
+  //     return false;
+  //   }
+  //   return true;
+  // };
 
-  // Fetch ride data from Firestore
-  const fetchRideData = async (userEmail) => {
-    try {
-      const rideRef = firestore.collection("bookings"); // Collection name for rides
-      const querySnapshot = await rideRef
-        .where("userEmail", "==", userEmail)
-        .get();
+  // // Fetch ride data from Firestore
+  // const fetchRideData = async (userEmail) => {
+  //   try {
+  //     const rideRef = firestore.collection("bookings"); // Collection name for rides
+  //     const querySnapshot = await rideRef
+  //       .where("userEmail", "==", userEmail)
+  //       .get();
 
-      if (querySnapshot.empty) {
-        console.log("No matching ride data found");
-        return null;
+  //     if (querySnapshot.empty) {
+  //       console.log("No matching ride data found");
+  //       return null;
+  //     }
+
+  //     const rideData = querySnapshot.docs[0].data();
+  //     return rideData;
+  //   } catch (error) {
+  //     console.log("Error fetching ride data:", error);
+  //   }
+  // };
+
+  // // Check if the ride conditions are met
+  // const checkIfRideShouldStart = (rideData) => {
+  //   if (!rideData) return;
+
+  //   const { status, date, destination } = rideData;
+
+  //   const currentDate = new Date().toISOString().split("T")[0];
+
+  //   if (
+  //     status === "confirmed" &&
+  //     date.toDate().toISOString().split("T")[0] === currentDate
+  //   ) {
+  //     setDestination(destination);
+  //     setRideStarted(true);
+  //   } else {
+  //     Alert.alert("Ride Not Active", "No active ride found for today.");
+  //   }
+  // };
+
+  // // Track user's location and update Firestore
+  // const startLocationTracking = async () => {
+  //   const location = await Location.getCurrentPositionAsync({
+  //     accuracy: Location.Accuracy.High,
+  //   });
+  //   setCurrentLocation({
+  //     latitude: location.coords.latitude,
+  //     longitude: location.coords.longitude,
+  //   });
+
+  //   // Update Firestore with the initial location
+  //   const userEmail = auth.currentUser?.email; // Ensure user is logged in
+  //   if (userEmail) {
+  //     updateUserLocationInFirestore(userEmail, {
+  //       latitude: location.coords.latitude,
+  //       longitude: location.coords.longitude,
+  //     });
+  //   }
+
+  //   // Start watching the position for continuous updates
+  //   Location.watchPositionAsync(
+  //     {
+  //       accuracy: Location.Accuracy.High,
+  //       timeInterval: 5000, // Update every 5 seconds
+  //       distanceInterval: 0, // Update regardless of movement
+  //     },
+  //     (location) => {
+  //       const updatedLocation = {
+  //         latitude: location.coords.latitude,
+  //         longitude: location.coords.longitude,
+  //       };
+
+  //       setCurrentLocation(updatedLocation);
+
+  //       // Update Firestore with the new location
+  //       if (userEmail) {
+  //         updateUserLocationInFirestore(userEmail, updatedLocation);
+  //       }
+  //     }
+  //   );
+  // };
+
+  // // Check and start ride tracking for current user
+  // const initiateRideTracking = async () => {
+  //   const userEmail = auth.currentUser?.email; // Get the current user's email from Firebase Auth
+  //   if (!userEmail) {
+  //     Alert.alert("User not logged in", "Please log in to track your ride.");
+  //     return;
+  //   }
+
+  //   const rideData = await fetchRideData(userEmail);
+  //   checkIfRideShouldStart(rideData);
+  // };
+
+  // useEffect(() => {
+  //   const initialize = async () => {
+  //     const hasPermission = await requestLocationPermission();
+  //     if (hasPermission) {
+  //       initiateRideTracking();
+  //     }
+  //   };
+  //   initialize();
+  // }, []);
+
+  // useEffect(() => {
+  //   if (rideStarted) {
+  //     startLocationTracking();
+  //   }
+  // }, [rideStarted]);
+
+  // const [routeCoordinates, setRouteCoordinates] = useState([]);
+
+  // // Function to fetch route from an API
+  // const fetchRoute = async (currentLocation, destination) => {
+  //   try {
+  //     const response = await fetch(
+  //       `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&departure_time=now&traffic_model=best_guess&key=AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3U`
+  //     );
+  //     const data = await response.json();
+
+  //     if (data.routes.length > 0) {
+  //       // Decode detailed polyline points
+  //       const detailedCoordinates = [];
+  //       data.routes[0].legs.forEach((leg) => {
+  //         leg.steps.forEach((step) => {
+  //           const points = decode(step.polyline.points);
+  //           const coordinates = points.map((point) => ({
+  //             latitude: point[0],
+  //             longitude: point[1],
+  //           }));
+  //           detailedCoordinates.push(...coordinates);
+  //         });
+  //       });
+
+  //       setRouteCoordinates(detailedCoordinates);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching route:", error);
+  //   }
+  // };
+
+  // // Fetch route whenever location changes
+  // useEffect(() => {
+  //   if (currentLocation && destination) {
+  //     fetchRoute(currentLocation, destination);
+  //   }
+  // }, [currentLocation, destination]);
+
+  // console.log(MapView);
+
+  // // Update location in Firestore
+  // const updateUserLocationInFirestore = async (userEmail, location) => {
+  //   try {
+  //     const userLocationRef = firestore
+  //       .collection("userLocations")
+  //       .doc(userEmail); // Create a document with user's email as ID
+  //     await userLocationRef.set({
+  //       latitude: location.latitude,
+  //       longitude: location.longitude,
+  //       timestamp: new Date().toISOString(), // Add a timestamp
+  //     });
+  //     console.log("User location updated in Firestore.");
+  //   } catch (error) {
+  //     console.error("Error updating user location in Firestore:", error);
+  //   }
+  // };
+
+  useEffect(() => {
+    const getLocation = async () => {
+      // Request permission
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.warn("Permission to access location was denied");
+        return;
       }
 
-      const rideData = querySnapshot.docs[0].data();
-      return rideData;
-    } catch (error) {
-      console.log("Error fetching ride data:", error);
-    }
-  };
+      let locationServicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!locationServicesEnabled) {
+        console.warn("Location services are disabled");
+        return;
+      }
 
-  // Check if the ride conditions are met
-  const checkIfRideShouldStart = (rideData) => {
-    if (!rideData) return;
-
-    const { status, date, destination } = rideData;
-
-    const currentDate = new Date().toISOString().split("T")[0];
-
-    if (
-      status === "confirmed" &&
-      date.toDate().toISOString().split("T")[0] === currentDate
-    ) {
-      setDestination(destination);
-      setRideStarted(true);
-    } else {
-      Alert.alert("Ride Not Active", "No active ride found for today.");
-    }
-  };
-
-  // Track user's location and update Firestore
-  const startLocationTracking = async () => {
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-    setCurrentLocation({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    });
-
-    // Update Firestore with the initial location
-    const userEmail = auth.currentUser?.email; // Ensure user is logged in
-    if (userEmail) {
-      updateUserLocationInFirestore(userEmail, {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-    }
-
-    // Start watching the position for continuous updates
-    Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 5000, // Update every 5 seconds
-        distanceInterval: 0, // Update regardless of movement
-      },
-      (location) => {
-        const updatedLocation = {
+      // Get current location
+      try {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        console.log("Location fetched:", location);
+        setCurrentLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-        };
-
-        setCurrentLocation(updatedLocation);
-
-        // Update Firestore with the new location
-        if (userEmail) {
-          updateUserLocationInFirestore(userEmail, updatedLocation);
-        }
-      }
-    );
-  };
-
-  // Check and start ride tracking for current user
-  const initiateRideTracking = async () => {
-    const userEmail = auth.currentUser?.email; // Get the current user's email from Firebase Auth
-    if (!userEmail) {
-      Alert.alert("User not logged in", "Please log in to track your ride.");
-      return;
-    }
-
-    const rideData = await fetchRideData(userEmail);
-    checkIfRideShouldStart(rideData);
-  };
-
-  useEffect(() => {
-    const initialize = async () => {
-      const hasPermission = await requestLocationPermission();
-      if (hasPermission) {
-        initiateRideTracking();
+        });
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching location:", error);
       }
     };
-    initialize();
+
+    getLocation();
   }, []);
 
-  useEffect(() => {
-    if (rideStarted) {
-      startLocationTracking();
-    }
-  }, [rideStarted]);
-
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
-
-  // Function to fetch route from an API
-  const fetchRoute = async (currentLocation, destination) => {
-    try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&departure_time=now&traffic_model=best_guess&key=AIzaSyBQGYLUr0pgOCIu4rYyhmKvyQ4M4_G_b3U`
-      );
-      const data = await response.json();
-
-      if (data.routes.length > 0) {
-        // Decode detailed polyline points
-        const detailedCoordinates = [];
-        data.routes[0].legs.forEach((leg) => {
-          leg.steps.forEach((step) => {
-            const points = decode(step.polyline.points);
-            const coordinates = points.map((point) => ({
-              latitude: point[0],
-              longitude: point[1],
-            }));
-            detailedCoordinates.push(...coordinates);
-          });
-        });
-
-        setRouteCoordinates(detailedCoordinates);
-      }
-    } catch (error) {
-      console.error("Error fetching route:", error);
-    }
-  };
-
-  // Fetch route whenever location changes
-  useEffect(() => {
-    if (currentLocation && destination) {
-      fetchRoute(currentLocation, destination);
-    }
-  }, [currentLocation, destination]);
-
-  console.log(MapView);
-
-  // Update location in Firestore
-  const updateUserLocationInFirestore = async (userEmail, location) => {
-    try {
-      const userLocationRef = firestore
-        .collection("userLocations")
-        .doc(userEmail); // Create a document with user's email as ID
-      await userLocationRef.set({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        timestamp: new Date().toISOString(), // Add a timestamp
-      });
-      console.log("User location updated in Firestore.");
-    } catch (error) {
-      console.error("Error updating user location in Firestore:", error);
-    }
-  };
+  console.log("Current Location:", currentLocation);
 
   return (
     <PaperProvider theme={theme}>
       <SafeAreaView style={styles.container}>
+      {loading ? (
+        <ActivityIndicator size="large" color="black" style={styles.loader} />
+      ) : (
         <MapView
           style={styles.map}
           initialRegion={{
-            latitude: currentLocation?.latitude || 16.4825,
-            longitude: currentLocation?.longitude || 80.616,
-            latitudeDelta: 0.5,
-            longitudeDelta: 0.5,
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
           }}
-          showsUserLocation={true}
           followsUserLocation={true}
+          showsUserLocation={true}
         >
         </MapView>
+      )}
 
         <Animated.View
           style={[
@@ -1075,22 +1118,22 @@ const BookingScreen = ({ navigation }) => {
         </Portal>
 
         {/* Animated SOS Button */}
-      <Animated.View
-        style={[
-          styles.sosButtonContainer,
-          {
-            opacity: opacity, // Apply animated opacity
-            transform: [{ scale: scale }], // Apply animated scaling
-          },
-        ]}
-      >
-        <MaterialIcons
-          name="error-outline" // SOS icon (you can choose any icon)
-          size={38}
-          color="red" // Bright color (Tomato Red)
-          onPress={sendSOS}
-        />
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.sosButtonContainer,
+            {
+              opacity: opacity, // Apply animated opacity
+              transform: [{ scale: scale }], // Apply animated scaling
+            },
+          ]}
+        >
+          <MaterialIcons
+            name="error-outline" // SOS icon (you can choose any icon)
+            size={38}
+            color="red" // Bright color (Tomato Red)
+            onPress={sendSOS}
+          />
+        </Animated.View>
       </SafeAreaView>
     </PaperProvider>
   );
@@ -1398,7 +1441,13 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     width: "10%", // Adjust width for better fit
     alignItems: "center",
-    marginLeft: 160
+    marginLeft: 160,
+  },
+  loader: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -25 }, { translateY: -25 }], // Center the loader
   },
 });
 

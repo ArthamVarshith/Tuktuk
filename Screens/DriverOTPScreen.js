@@ -3,8 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 
 const DriverOTPScreen = ({ route, navigation }) => {
   const [otp, setOtp] = useState('');
-  // const { confirmation } = route.params;
-
   const handleVerifyOTP = async () => {
     try {
       await confirmation.confirm(otp);
@@ -20,11 +18,10 @@ const DriverOTPScreen = ({ route, navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="OTP"
-        keyboardType="number-pad"
         value={otp}
         onChangeText={setOtp}
       />
-      <TouchableOpacity style={styles.button} onPress={()=>navigation.navigate("DriverScreen")}>
+      <TouchableOpacity style={styles.button} onPress={()=>navigation.navigate("DriverScreen",{"Email": otp})}>
         <Text style={styles.buttonText}>Verify OTP</Text>
       </TouchableOpacity>
     </View>

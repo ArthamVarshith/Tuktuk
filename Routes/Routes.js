@@ -12,6 +12,7 @@ import DriverScreen from "../Screens/DriverScreen";
 import Profile from "../Screens/Profile";
 import History from "../Screens/History";
 import BookedScreen from "../Screens/BookedScreens";
+import DriverProfile from "../Screens/DriverProfile";
 
 const Routes = () => {
   const Stack = createStackNavigator();
@@ -36,7 +37,7 @@ const Routes = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: false, // Disable headers for all screens
+        headerShown: false,
       }}
     >
       {!user ? (
@@ -47,6 +48,7 @@ const Routes = () => {
           <Stack.Screen name="DriverLogin" component={DriverLogin} />
           <Stack.Screen name="DriverOTPScreen" component={DriverOTPScreen} />
           <Stack.Screen name="DriverScreen" component={DriverScreen} />
+          <Stack.Screen name="DriverProfile" component={DriverProfile}/>
         </>
       ) : (
         <>

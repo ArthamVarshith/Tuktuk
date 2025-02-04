@@ -355,12 +355,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
   },
   closeButton: {
-    position: "absolute",
+    position: "relative",
     right: 20,
     backgroundColor: "black",  // Bright color for attention
     borderRadius: 25,
     padding: 10,
     zIndex: 1,
+    top:20
   },
   title: {
     fontSize: 28,

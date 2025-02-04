@@ -26,6 +26,7 @@
     "expo-firebase-recaptcha": "^2.3.1",
     "expo-font": "~13.0.3",
     "expo-image-picker": "~16.0.4",
+    "expo-linear-gradient": "^14.0.2",
     "expo-location": "~18.0.5",
     "expo-maps": "^0.6.1",
     "expo-modules-core": "~2.1.3",

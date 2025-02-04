@@ -424,21 +424,19 @@ const BookingScreen = ({ navigation }) => {
       alert("Please login to book a ride");
       return;
     }
-
+  
     if (hasActiveBooking) {
-      alert(
-        "You already have an active booking. Please wait for it to complete."
-      );
+      alert("You already have an active booking. Please wait for it to complete.");
       return;
     }
-
+  
     setShowSearchingModal(true);
-
+  
     const rideDate = rideMode === "realtime" ? new Date() : selectedDate;
     const rideTime = rideMode === "realtime" ? new Date() : selectedTime;
-
+  
     const destinationCode = generateDestinationCode(selectedLocation.name);
-
+  
     const bookingDetails = {
       destination: {
         name: selectedLocation.name,
@@ -456,20 +454,28 @@ const BookingScreen = ({ navigation }) => {
       userEmail: currentUser.email,
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
     };
-
+  
     try {
       const bookingsRef = firebase.firestore().collection("bookings");
       const docRef = await bookingsRef.add(bookingDetails);
       setActiveBookingId(docRef.id);
       setHasActiveBooking(true);
       setShowRideDetailsModal(false);
-
-      // Listen for status changes
+  
+      if (rideMode === "scheduled") {
+        setShowSearchingModal(false);
+        navigation.navigate("ScheduledBooking", {
+          rideDetails: bookingDetails,
+          bookingId: docRef.id,
+        });
+        return;
+      }
+  
+      // Listen for status changes only if ride mode is not "scheduled"
       const unsubscribe = bookingsRef.doc(docRef.id).onSnapshot((doc) => {
         if (doc.exists) {
           const bookingStatus = doc.data().status;
           if (bookingStatus === "Completed") {
-            // Navigate to BookedScreen and pass the ride details
             navigation.navigate("BookedScreen", {
               rideDetails: doc.data(),
               bookingId: docRef.id,
@@ -486,6 +492,7 @@ const BookingScreen = ({ navigation }) => {
       alert("There was an error with the booking. Please try again.");
     }
   };
+  
 
   const handleLocationSelect = (location) => {
     setSelectedLocation(location);
@@ -1142,6 +1149,7 @@ const BookingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor:"black"
   },
   map: {
     width: SCREEN_WIDTH,
@@ -1414,7 +1422,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "red",
+    backgroundColor: "black",
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
@@ -1428,7 +1436,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "red",
+    backgroundColor: "black",
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,

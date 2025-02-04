@@ -13,6 +13,7 @@ import Profile from "../Screens/Profile";
 import History from "../Screens/History";
 import BookedScreen from "../Screens/BookedScreens";
 import DriverProfile from "../Screens/DriverProfile";
+import ScheduledBooking from "../Screens/ScheduledBooking"
 
 const Routes = () => {
   const Stack = createStackNavigator();
@@ -56,6 +57,7 @@ const Routes = () => {
           <Stack.Screen name="BookingScreen" component={BookingScreen} />
           <Stack.Screen name="Profile" component={Profile} />
           <Stack.Screen name="History" component={History} />
+          <Stack.Screen name="ScheduledBooking" component={ScheduledBooking} />
         </>
       )}
     </Stack.Navigator>
